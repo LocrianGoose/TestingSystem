@@ -1,0 +1,9 @@
+Use checkpatch.pl:
+	wget https://raw.githubusercontent.com/torvalds/linux/master/scripts/checkpatch.pl
+	chmod +x checkpatch.pl
+	./checkpatch.pl --no-tree -f file.c
+License line:
+	// SPDX-License-Identifier: GPL-3.0-or-later
+User Defined Types
+	Capitalize the type name
+Use _ to separate words in names

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,7 +11,7 @@ int s_close(int fd)
 	if (fd != 1 && fd != 0 && fd != -1 && fd != 2)
 		if (close(fd)) {
 			perror("close failed");
-			exit(1);
+			return -1;
 		}
 	return 0;
 }
@@ -43,11 +45,12 @@ int s_open(char *fileName, int flag)
 	return fd;
 }
 
-void s_dup2(int oldfd, int newfd)
+int s_dup2(int oldfd, int newfd)
 {
 	if (dup2(oldfd, newfd) == -1) {
 		perror("dup2 failed");
-		exit(1);
+		return -1;
 	}
 	s_close(oldfd);
+	return 0;
 }

@@ -1,0 +1,15 @@
+contest/ # Contest directory
+	checkers/ # Directory for checkers binaries
+	logs/
+	participants/
+		participant_name/
+			binary/
+				problem_name
+			soulutions/
+				problem_name.c
+	problems/ # Directory for contest's puzzles.
+		problem_name/
+			parms.cfg # Config for the tester
+			tests/ # Directory for tests
+	global.cfg # Config file for jugde
+	results.csv
