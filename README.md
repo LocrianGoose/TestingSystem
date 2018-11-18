@@ -19,7 +19,7 @@ Here is shown testing system with two sample contests:
 |   └──...
 ⋮
 ```
-In order to start testing of a contest in the ```contest_name``` folder run ```$ ./judge contest_name```
+In order to start testing of a contest in the ```contest_name``` folder run ```$ ./judge contest_name```\
 In the example above SampleContest1 can be tested by running ```$ ./judge SampleContest1```
 
 Additional information on ```TestingSystem``` such as contest folder structure is avaliable in the ```HELP.md```
