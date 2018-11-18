@@ -3,7 +3,7 @@ Simple Contest Testing system written in pure C.
 
 Use ```$ ./build.sh``` to build and ```$ cd bin && ./judge contest``` to run the demo.
 
-Working system consists of three components which must be in the same folder: ```judge```, ```tester``` and ```checkers``` directory with at least one checking program inside.
+Working system consists of three components: ```judge```, ```tester``` and ```checkers``` directory with at least one checking program inside. All three components must be in the same folder.
 
 Here is shown testing system with two sample contests:
 ```
