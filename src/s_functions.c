@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#ifndef _S_FUNCTIONS_C_
+#define _S_FUNCTIONS_C_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -62,3 +65,5 @@ int s_dup2(int oldfd, int newfd)
 	s_close(oldfd);
 	return 0;
 }
+
+#endif
