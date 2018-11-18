@@ -6,6 +6,14 @@
 #include <fcntl.h>
 
 
+void s_chdir(char *path)
+{
+	if (chdir(path) < 0) {
+		perror("chdir failed");
+		exit(-1);
+	}
+}
+
 int s_close(int fd)
 {
 	if (fd != 1 && fd != 0 && fd != -1 && fd != 2)
