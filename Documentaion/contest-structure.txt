@@ -3,13 +3,11 @@ contest/ # Contest directory
 	logs/
 	participants/
 		participant_name/
-			binary/
-				problem_name
-			soulutions/
-				problem_name.c
+			problem_name.c
 	problems/ # Directory for contest's puzzles.
 		problem_name/
 			parms.cfg # Config for the tester
-			tests/ # Directory for tests
+			01.dat # input
+			01.ans # output
 	global.cfg # Config file for jugde
 	results.csv
