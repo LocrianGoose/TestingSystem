@@ -2,8 +2,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <dirent.h>
-#include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+#include <signal.h>
+#include <stddef.h>
+
 
 typedef struct {
 	DIR *dir;
@@ -15,10 +22,31 @@ void s_chdir(char *path);
 int s_open(char *fileName, int flag);
 void *s_realloc(void *ptr, int size);
 
+void compile(char *name)
+{
+	pid_t pid = fork();
+	if (pid < 0) {
+		perror("fork failed");
+		exit(-1);
+	} else if (pid) {
+		wait(NULL);
+	} else {
+		execlp("make", "make", name, NULL);
+	}
+}
+
+void compile_all(Participant *prts)
+{
+	for (int i = 0; prts[i].name != NULL; i++) {
+		compile(prts[i].name);
+	}
+}
+
 Participant *get_participants_list(void)
 {
 	int i = 0, max_len = 1;
 	struct dirent *entry;
+	char *tmp;
 	DIR *participants_dir = opendir("participants");
 	Participant *participants = NULL;
 
@@ -35,9 +63,11 @@ Participant *get_participants_list(void)
 		}
 		participants[i].dir = opendir(entry->d_name);
 		if (participants[i].dir != NULL) {
-			participants[i].name = entry->d_name;
+			participants[i].name = (tmp = entry->d_name);
 			participants[i].points = 0;
-			i++;
+			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
+				i++;
+			}
 		} else {
 			perror("opendir failed");
 		}
@@ -74,7 +104,8 @@ int main(int argc, char **argv)
 
 	init(argc, argv, &config);
 	participants = get_participants_list();
+	compile_all(participants);
 	free(participants);
-	printf("%d\n", argc);
+	close(config);
 	return 0;
 }
