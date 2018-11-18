@@ -35,13 +35,6 @@ void compile(char *name)
 	}
 }
 
-void compile_all(Participant *prts)
-{
-	for (int i = 0; prts[i].name != NULL; i++) {
-		compile(prts[i].name);
-	}
-}
-
 Participant *get_participants_list(void)
 {
 	int i = 0, max_len = 1;
@@ -104,7 +97,6 @@ int main(int argc, char **argv)
 
 	init(argc, argv, &config);
 	participants = get_participants_list();
-	compile_all(participants);
 	free(participants);
 	close(config);
 	return 0;
