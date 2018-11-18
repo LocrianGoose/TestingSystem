@@ -101,8 +101,20 @@ void testing(Participant *prts, char *contest)
 			} else if (pid == 0) {
 				//getresult
 			} else {
-				if (execlp("tester", "tester",
+				char sol_path[NAME_MAX];
+				char prblm_path[NAME_MAX];
+
+				snprintf(sol_path, NAME_MAX - 1,
+						"%s/participants/%s/%s",
 						contest, prts[i].name,
+						prts[i].solutions[j]);
+				snprintf(prblm_path, NAME_MAX - 1,
+						"%s/problems/%s", contest,
+						prts[i].solutions[j]);
+				if (execlp("tester", "tester",
+						sol_path,
+						prblm_path,
+						contest,
 						prts[i].solutions[j],
 						NULL) < 0) {
 					perror("Tried to exec tester, but failed");
