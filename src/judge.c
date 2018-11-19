@@ -89,6 +89,18 @@ Participant *get_participants_list(void)
 	return participants;
 }
 
+void remove_extension(char *s, int max)
+{
+	int length = strlen(s);
+
+	for (int i = 1; i < max; i++)
+		if (s[length - i] == '.') {
+			s[length - i] = 0;
+			break;
+		}
+
+}
+
 void testing(Participant *prts, char *contest)
 {
 	pid_t pid;
@@ -98,7 +110,7 @@ void testing(Participant *prts, char *contest)
 			pid = fork();
 			if (pid < 0) {
 				perror("fork failed");
-			} else if (pid == 0) {
+			} else if (pid != 0) {
 				//getresult
 			} else {
 				char sol_path[NAME_MAX];
@@ -111,13 +123,16 @@ void testing(Participant *prts, char *contest)
 				snprintf(prblm_path, NAME_MAX - 1,
 						"%s/problems/%s", contest,
 						prts[i].solutions[j]);
+				remove_extension(prblm_path,
+						strlen(prts[i].solutions[j]));
 				if (execlp("tester", "tester",
 						sol_path,
 						prblm_path,
 						contest,
-						prts[i].solutions[j],
+						prts[i].name,
 						NULL) < 0) {
-					perror("Tried to exec tester, but failed");
+					perror("Can't exec tester");
+					exit(1);
 				}
 			}
 		}
@@ -146,7 +161,7 @@ int main(int argc, char **argv)
 
 	init(argc, argv, &config);
 	participants = get_participants_list();
-	//testing(participants, argv[1]);
+	testing(participants, argv[1]);
 	free(participants);
 	close(config);
 	return 0;
