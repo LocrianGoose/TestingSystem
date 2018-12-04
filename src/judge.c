@@ -11,31 +11,34 @@
 #include <signal.h>
 #include <stddef.h>
 
-
 typedef struct {
 	char *name;
 	char **solutions;
-	int points;
+	int *points;
 } Participant;
 
 
 void s_chdir(char *path);
 int s_open(char *fileName, int flag);
 void *s_realloc(void *ptr, int size);
+int s_close(int fd);
+int s_dup2(int oldfd, int newfd);
 
-char **get_solutions(DIR *sol_dir)
+char **get_solutions(DIR *sol_dir, Participant *prt)
 {
-	char **solutions = NULL;
-	char *tmp;
+	char **solutions = NULL, *tmp;
 	struct dirent *entry;
-	int i = 0, max_len = 1;
+	int i = 0, max_len = 1, *points;
 
 	while ((entry = readdir(sol_dir)) != NULL) {
 		if (i + 1 >= max_len) {
 			max_len <<= 1;
 			solutions = s_realloc(solutions,
 					max_len * sizeof(char *));
+			points = s_realloc(points,
+					max_len * sizeof(int *));
 		}
+		points[i] = 0;
 		tmp = entry->d_name;
 		if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) //add filter
 			solutions[i++] = tmp;
@@ -43,6 +46,8 @@ char **get_solutions(DIR *sol_dir)
 	if (i == 0)
 		free(solutions);
 	solutions[i] = NULL;
+	prt->solutions = solutions;
+	prt->points = points;
 	return solutions;
 }
 
@@ -56,7 +61,7 @@ Participant *get_participants_list(void)
 
 	if (participants_dir == NULL) {
 		perror("opendir failed");
-		exit(1);
+		exit(-1);
 	}
 	s_chdir("participants");
 	while ((entry = readdir(participants_dir)) != NULL) {
@@ -70,8 +75,7 @@ Participant *get_participants_list(void)
 			participants[i].name = (tmp = entry->d_name);
 			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
 				participants[i].points = 0;
-				participants[i].solutions =
-					get_solutions(sol_dir);
+				get_solutions(sol_dir, participants + i);
 				i++;
 			}
 		} else {
@@ -101,17 +105,39 @@ void remove_extension(char *s, int max)
 
 }
 
-void testing(Participant *prts, char *contest)
+int testing(Participant *prts, char *contest)
 {
 	pid_t pid;
+	int pipe_fd[2];
+	char ch;
 
 	for (int i = 0; prts[i].name != NULL; i++) {
 		for (int j = 0; prts[i].solutions[j] != NULL; j++) {
+			if (pipe(pipe_fd) < 0) {
+				perror("pipe failed");
+				continue;
+			}
 			pid = fork();
 			if (pid < 0) {
-				perror("fork failed");
+				perror("fork failed, omiting");
+				s_close(pipe_fd[0]);
+				s_close(pipe_fd[1]);
 			} else if (pid != 0) {
-				//getresult
+				s_close(pipe_fd[1]);
+				while (ch != EOF) {
+					if (read(pipe_fd[0], &ch, 1) < 0) {
+						perror("read failed, omiting");
+						kill(pid, SIGTERM);
+						s_close(pipe_fd[0]);
+						waitpid(pid, NULL, 0);
+						continue;
+					}
+					if (ch == 'X')
+						prts[i].points[j] = -1;
+					else if (ch == '+')
+						prts[i].points[j]++;
+				}
+				waitpid(pid, NULL, 0);
 			} else {
 				char sol_path[NAME_MAX];
 				char prblm_path[NAME_MAX];
@@ -125,6 +151,8 @@ void testing(Participant *prts, char *contest)
 						prts[i].solutions[j]);
 				remove_extension(prblm_path,
 						strlen(prts[i].solutions[j]));
+				s_close(pipe_fd[0]);
+				s_dup2(1, pipe_fd[1]);
 				if (execlp("tester", "tester",
 						sol_path,
 						prblm_path,
@@ -132,11 +160,12 @@ void testing(Participant *prts, char *contest)
 						prts[i].name,
 						NULL) < 0) {
 					perror("Can't exec tester");
-					exit(1);
+					exit(-1);
 				}
 			}
 		}
 	}
+	return 0;
 }
 
 
@@ -144,13 +173,13 @@ void init(int argc, char **argv, int *config)
 {
 	if (argc != 2) {
 		perror("Wrong number of arguments");
-		exit(1);
+		exit(-1);
 	}
 	s_chdir(argv[1]);
 	*config = s_open("global.cfg", 0);
 	if (*config < 0) {
 		perror("Can't open global.cfg");
-		exit(1);
+		exit(-1);
 	}
 }
 
@@ -163,6 +192,6 @@ int main(int argc, char **argv)
 	participants = get_participants_list();
 	testing(participants, argv[1]);
 	free(participants);
-	close(config);
+	s_close(config);
 	return 0;
 }
