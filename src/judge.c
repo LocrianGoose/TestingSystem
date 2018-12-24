@@ -11,6 +11,9 @@
 #include <signal.h>
 #include <stddef.h>
 
+#define SUMM 284
+#define PERF 220
+
 typedef struct {
 	char *name;
 	char **solutions;
@@ -23,6 +26,8 @@ int s_open(char *fileName, int flag);
 void *s_realloc(void *ptr, int size);
 int s_close(int fd);
 int s_dup2(int oldfd, int newfd);
+
+int score_parameter = SUMM;
 
 char **get_solutions(DIR *sol_dir, Participant *prt)
 {
@@ -101,11 +106,40 @@ void remove_extension(char *s, int max)
 
 }
 
+int countScore(int fd, pid_t pid)
+{
+	char ch;
+	int score = 0;
+
+	if (score_parameter == PERF)
+		score = 1;
+	while (ch != EOF) {
+		if (read(fd, &ch, 1) < 0) {
+			perror("read failed, omiting");
+			kill(pid, SIGTERM);
+			s_close(fd);
+			ch = EOF;
+			score = 0;
+		}
+		switch (score_parameter) {
+		case SUMM:
+			if (ch == '+')
+				++score;
+			break;
+		case PERF:
+			if (ch == '-' || ch == 'X')
+				score = 0;
+			break;
+		}
+	}
+	waitpid(pid, NULL, 0);
+	return score;
+}
+
 int testing(Participant *prts, char *contest)
 {
 	pid_t pid;
 	int pipe_fd[2];
-	char ch;
 
 	for (int i = 0; prts[i].name != NULL; ++i) {
 		for (int j = 0; prts[i].solutions[j] != NULL; ++j) {
@@ -120,17 +154,7 @@ int testing(Participant *prts, char *contest)
 				s_close(pipe_fd[1]);
 			} else if (pid != 0) {
 				s_close(pipe_fd[1]);
-				while (ch != EOF) {
-					if (read(pipe_fd[0], &ch, 1) < 0) {
-						perror("read failed, omiting");
-						kill(pid, SIGTERM);
-						s_close(pipe_fd[0]);
-						ch = EOF;
-					}
-					if (ch == '+')
-						++prts[i].points[j];
-				}
-				waitpid(pid, NULL, 0);
+				prts[i].points[j] = countScore(pipe_fd[0], pid);
 			} else {
 				char sol_path[NAME_MAX];
 				char prblm_path[NAME_MAX];
