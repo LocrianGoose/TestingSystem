@@ -17,7 +17,7 @@ typedef struct {
 	int *points;
 } Participant;
 
-
+DIR *s_opendir(char *path);
 void s_chdir(char *path);
 int s_open(char *fileName, int flag);
 void *s_realloc(void *ptr, int size);
@@ -56,13 +56,9 @@ Participant *get_participants_list(void)
 	int i = 0, max_len = 1;
 	struct dirent *entry;
 	char *tmp;
-	DIR *participants_dir = opendir("participants"), *sol_dir;
+	DIR *participants_dir = s_opendir("participants"), *sol_dir;
 	Participant *participants = NULL;
 
-	if (participants_dir == NULL) {
-		perror("opendir failed");
-		exit(-1);
-	}
 	s_chdir("participants");
 	while ((entry = readdir(participants_dir)) != NULL) {
 		if (i + 1 >= max_len) {
@@ -76,7 +72,7 @@ Participant *get_participants_list(void)
 			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
 				participants[i].points = 0;
 				get_solutions(sol_dir, participants + i);
-				i++;
+				++i;
 			}
 		} else {
 			perror("opendir failed");
@@ -97,7 +93,7 @@ void remove_extension(char *s, int max)
 {
 	int length = strlen(s);
 
-	for (int i = 1; i < max; i++)
+	for (int i = 1; i < max; ++i)
 		if (s[length - i] == '.') {
 			s[length - i] = 0;
 			break;
@@ -111,8 +107,8 @@ int testing(Participant *prts, char *contest)
 	int pipe_fd[2];
 	char ch;
 
-	for (int i = 0; prts[i].name != NULL; i++) {
-		for (int j = 0; prts[i].solutions[j] != NULL; j++) {
+	for (int i = 0; prts[i].name != NULL; ++i) {
+		for (int j = 0; prts[i].solutions[j] != NULL; ++j) {
 			if (pipe(pipe_fd) < 0) {
 				perror("pipe failed");
 				continue;
@@ -129,13 +125,12 @@ int testing(Participant *prts, char *contest)
 						perror("read failed, omiting");
 						kill(pid, SIGTERM);
 						s_close(pipe_fd[0]);
-						waitpid(pid, NULL, 0);
-						continue;
+						ch = EOF;
 					}
 					if (ch == 'X')
 						prts[i].points[j] = -1;
 					else if (ch == '+')
-						prts[i].points[j]++;
+						++prts[i].points[j];
 				}
 				waitpid(pid, NULL, 0);
 			} else {
@@ -168,7 +163,6 @@ int testing(Participant *prts, char *contest)
 	return 0;
 }
 
-
 void init(int argc, char **argv, int *config)
 {
 	if (argc != 2) {
@@ -183,6 +177,18 @@ void init(int argc, char **argv, int *config)
 	}
 }
 
+int printResult(Participant *prt)
+{
+	for (int i = 0; prt[i].name != NULL; ++i) {
+		printf("%s", prt[i].name);
+		for (int j = 0; prt[i].solutions[j] != 0; ++j)
+			printf(", %s %d",
+				prt[i].solutions[j], prt[i].points[j]);
+		puts("");
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int config;
@@ -191,6 +197,7 @@ int main(int argc, char **argv)
 	init(argc, argv, &config);
 	participants = get_participants_list();
 	testing(participants, argv[1]);
+	printResult(participants);
 	free(participants);
 	s_close(config);
 	return 0;
