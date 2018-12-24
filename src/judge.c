@@ -127,9 +127,7 @@ int testing(Participant *prts, char *contest)
 						s_close(pipe_fd[0]);
 						ch = EOF;
 					}
-					if (ch == 'X')
-						prts[i].points[j] = -1;
-					else if (ch == '+')
+					if (ch == '+')
 						++prts[i].points[j];
 				}
 				waitpid(pid, NULL, 0);
