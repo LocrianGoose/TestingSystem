@@ -10,6 +10,7 @@
 #include <string.h>
 #include <signal.h>
 #include <stddef.h>
+#include <sys/file.h>
 
 #define SUMM 284
 #define PERF 220
@@ -21,7 +22,6 @@ typedef struct {
 } Participant;
 
 DIR *s_opendir(char *path);
-void s_chdir(char *path);
 int s_open(char *fileName, int flag);
 void *s_realloc(void *ptr, int size);
 int s_close(int fd);
@@ -33,7 +33,7 @@ char **get_solutions(DIR *sol_dir, Participant *prt)
 {
 	char **solutions = NULL, *tmp;
 	struct dirent *entry;
-	int i = 0, max_len = 1, *points;
+	int i = 0, max_len = 1, *points = NULL;
 
 	while ((entry = readdir(sol_dir)) != NULL) {
 		if (i + 1 >= max_len) {
@@ -45,33 +45,37 @@ char **get_solutions(DIR *sol_dir, Participant *prt)
 		}
 		points[i] = 0;
 		tmp = entry->d_name;
-		if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) //add filter
+		if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3))
 			solutions[i++] = tmp;
 	}
-	if (i == 0)
-		free(solutions);
 	solutions[i] = NULL;
 	prt->solutions = solutions;
 	prt->points = points;
 	return solutions;
 }
 
-Participant *get_participants_list(void)
+Participant *get_participants_list(char *contest)
 {
+	char path[NAME_MAX];
+	char sol_d[2 * NAME_MAX + 1];
 	int i = 0, max_len = 1;
 	struct dirent *entry;
 	char *tmp;
-	DIR *participants_dir = s_opendir("participants"), *sol_dir;
+	DIR *participants_dir, *sol_dir;
 	Participant *participants = NULL;
 
-	s_chdir("participants");
+	snprintf(path, NAME_MAX - 1,
+			"%s/participants",
+			contest);
+	participants_dir = s_opendir(path);
 	while ((entry = readdir(participants_dir)) != NULL) {
 		if (i + 1 >= max_len) {
 			max_len <<= 1;
 			participants = s_realloc(participants,
 					max_len * sizeof(Participant));
 		}
-		sol_dir = opendir(entry->d_name);
+		snprintf(sol_d, 2 * NAME_MAX + 1, "%s/%s", path, entry->d_name);
+		sol_dir = opendir(sol_d);
 		if (sol_dir != NULL) {
 			participants[i].name = (tmp = entry->d_name);
 			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
@@ -89,7 +93,6 @@ Participant *get_participants_list(void)
 		exit(-1);
 	}
 	participants[i].name = NULL;
-	s_chdir("..");
 	closedir(participants_dir);
 	return participants;
 }
@@ -108,19 +111,14 @@ void remove_extension(char *s, int max)
 
 int countScore(int fd, pid_t pid)
 {
-	char ch;
+	char ch = '0';
 	int score = 0;
 
 	if (score_parameter == PERF)
 		score = 1;
 	while (ch != EOF) {
-		if (read(fd, &ch, 1) < 0) {
-			perror("read failed, omiting");
-			kill(pid, SIGTERM);
-			s_close(fd);
+		if (read(fd, &ch, 1) <= 0)
 			ch = EOF;
-			score = 0;
-		}
 		switch (score_parameter) {
 		case SUMM:
 			if (ch == '+')
@@ -132,6 +130,7 @@ int countScore(int fd, pid_t pid)
 			break;
 		}
 	}
+	s_close(fd);
 	waitpid(pid, NULL, 0);
 	return score;
 }
@@ -169,8 +168,8 @@ int testing(Participant *prts, char *contest)
 				remove_extension(prblm_path,
 						strlen(prts[i].solutions[j]));
 				s_close(pipe_fd[0]);
-				s_dup2(1, pipe_fd[1]);
-				if (execlp("tester", "tester",
+				s_dup2(pipe_fd[1], 1);
+				if (execlp("./tester", "tester",
 						sol_path,
 						prblm_path,
 						contest,
@@ -185,18 +184,30 @@ int testing(Participant *prts, char *contest)
 	return 0;
 }
 
-void init(int argc, char **argv, int *config)
+void init(int argc, char **argv)
 {
+	int config_fd;
+	char path[NAME_MAX];
+	char prop_string[NAME_MAX];
+
 	if (argc != 2) {
 		perror("Wrong number of arguments");
 		exit(-1);
 	}
-	s_chdir(argv[1]);
-	*config = s_open("global.cfg", 0);
-	if (*config < 0) {
+
+	snprintf(path, NAME_MAX - 1,
+			"%s/global.cfg",
+			argv[1]);
+	config_fd = s_open(path, 0);
+	if (config_fd < 0) {
 		perror("Can't open global.cfg");
 		exit(-1);
 	}
+	s_dup2(config_fd, 0);
+	while (fgets(prop_string, NAME_MAX - 1, stdin) != NULL) {
+		puts(prop_string);
+	}
+	s_close(0);
 }
 
 int printResult(Participant *prt)
@@ -211,16 +222,24 @@ int printResult(Participant *prt)
 	return 0;
 }
 
+void freeParticipants(Participant *prt)
+{
+	for (int i = 0; prt[i].name != NULL; ++i) {
+		free(prt[i].solutions);
+		free(prt[i].points);
+	}
+	free(prt);
+}
+
 int main(int argc, char **argv)
 {
-	int config;
 	Participant *participants;
 
-	init(argc, argv, &config);
-	participants = get_participants_list();
+	init(argc, argv);
+	participants = get_participants_list(argv[1]);
+	//printResult(participants);
 	testing(participants, argv[1]);
 	printResult(participants);
-	free(participants);
-	s_close(config);
+	freeParticipants(participants);
 	return 0;
 }
