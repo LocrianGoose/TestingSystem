@@ -28,6 +28,7 @@ int s_close(int fd);
 int s_dup2(int oldfd, int newfd);
 
 int score_parameter = SUMM;
+char problems_string[NAME_MAX];
 
 char **get_solutions(DIR *sol_dir, Participant *prt)
 {
@@ -205,20 +206,67 @@ void init(int argc, char **argv)
 	}
 	s_dup2(config_fd, 0);
 	while (fgets(prop_string, NAME_MAX - 1, stdin) != NULL) {
-		puts(prop_string);
+		if (!strncmp(prop_string, "score_parameter =", 17)) {
+			if (strstr(prop_string, "SUMM") != NULL)
+				score_parameter = SUMM;
+			if (strstr(prop_string, "PERF") != NULL)
+				score_parameter = PERF;
+		}
+		if (!strncmp(prop_string, "problems_list =", 15))
+			strncpy(problems_string, prop_string + 15, NAME_MAX);
 	}
+	problems_string[strlen(problems_string) - 1] = 0;
 	s_close(0);
+}
+
+char **get_problems(char *string)
+{
+	char **list = malloc(strlen(string) * sizeof(char **));
+	int start = 1, j = 0;
+	for (int i = 0; i <= strlen(string); ++i) {
+		if (string[i] == ',' || string[i] == 0) {
+			list[j] = malloc((i - start + 1) * sizeof(char));
+			strncpy(list[j], string + start, i - start);
+			list[j++][i - start] = 0;
+			start = i + 2;
+		}
+	}
+	list[j] = NULL;
+	return list;
+}
+
+void free_problems(char **list)
+{
+	for (int i = 0; list[i] != NULL; ++i)
+		free(list[i]);
+	free(list);
 }
 
 int printResult(Participant *prt)
 {
+	char **problems_list = get_problems(problems_string);
+	char flag;
+
+	printf("Name, %s\n", problems_string);
+
 	for (int i = 0; prt[i].name != NULL; ++i) {
 		printf("%s", prt[i].name);
-		for (int j = 0; prt[i].solutions[j] != 0; ++j)
-			printf(", %s %d",
-				prt[i].solutions[j], prt[i].points[j]);
+		for (int j = 0; problems_list[j] != NULL; ++j) {
+			flag = 1;
+			for (int k = 0; prt[i].solutions[k] != 0; ++k) {
+				if (strncmp(problems_list[j], prt[i].solutions[k],
+							strlen(problems_list[j])) == 0) {
+					printf(", %d", prt[i].points[k]);
+					flag = 0;
+					break;
+				}
+			}
+			if (flag)
+				printf(", 0");
+		}
 		puts("");
 	}
+	free_problems(problems_list);
 	return 0;
 }
 
@@ -237,7 +285,6 @@ int main(int argc, char **argv)
 
 	init(argc, argv);
 	participants = get_participants_list(argv[1]);
-	//printResult(participants);
 	testing(participants, argv[1]);
 	printResult(participants);
 	freeParticipants(participants);
