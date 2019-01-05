@@ -173,8 +173,6 @@ int testing(Participant *prts, char *contest)
 				if (execlp("./tester", "tester",
 						sol_path,
 						prblm_path,
-						contest,
-						prts[i].name,
 						NULL) < 0) {
 					perror("Can't exec tester");
 					exit(-1);
