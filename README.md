@@ -12,11 +12,11 @@ Here is shown testing system with two sample contests:
 ├── checkers
 │   ├── checker_byte
 │   └── checker_int
-|
+│
 ├── SampleContest1
-|   └──...
+│   └──...
 ├── SampleContest2
-|   └──...
+│   └──...
 ⋮
 ```
 In order to start testing of a contest in the ```contest_name``` folder run ```$ ./judge contest_name```\
