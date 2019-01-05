@@ -18,14 +18,16 @@ void init(int argc, char **argv)
 		printf("Error: Wrong number of arguments");
 		exit(1);
 	}
-	s_chdir(argv[2]);
 }
 
 int main(int argc, char **argv)
 {
 	init(argc, argv);
 	char *root_dir = calloc(NAME_MAX, 1);
+	char *exe = calloc(NAME_MAX, 1);
 	getcwd(root_dir, NAME_MAX);
+	getcwd(exe, NAME_MAX);
+	strcat(exe, "/.tmp.out");
 	pid_t pid = fork();
 	if (pid == 0) {
 		execlp("rm", "rm", "./.tmp.out", "-f", NULL);
@@ -38,7 +40,7 @@ int main(int argc, char **argv)
 	} else {
 		wait(NULL);
 	}
-	
+	//s_chdir(argv[2]);
 	struct dirent *entry, *entry2;
 	char *tmp, *tmp2;
 	DIR *tests_dir = opendir(argv[2]), *tests_dir2;
@@ -57,11 +59,11 @@ int main(int argc, char **argv)
 			while ((entry2 = readdir(tests_dir2)) != NULL) {
 				if(strlen(tmp2 = entry2->d_name) >= 4 && strcmp(tmp2 + strlen(tmp2) - 4, ".ans") == 0 &&
 				   strlen(tmp) == strlen(tmp2) && strncmp(tmp, tmp2, strlen(tmp2) - 4) == 0) {
-					char *data, *answer;
-					data = calloc(3, 1);
-					answer = calloc(3, 1);
-					data[0] = answer[0] = '.';
-					data[1] = answer[1] = '/';
+					char *data = malloc(9000), *answer = malloc(9000);
+					strcpy(data, argv[2]);
+					strcpy(answer, argv[2]);
+					strcat(data, "/");
+					strcat(answer, "/");
 					strcat(data, tmp);
 					strcat(answer, tmp2);
 					pid_t pid;
@@ -69,7 +71,7 @@ int main(int argc, char **argv)
 					if (pid == 0) {
 						dup2(fd[1], 1);
 						close(fd[1]);
-						execlp(root_dir, root_dir, "./.tmp.out", data, answer, NULL);
+						execlp(root_dir, root_dir, exe, data, answer, NULL);
 					} else {
 						//printf("%s %s %s [%c]\n", root_dir, data, answer, getchar());
 						printf("%c", getchar());

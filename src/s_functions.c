@@ -7,7 +7,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 
+DIR *s_opendir(char *path)
+{
+	DIR *dir = opendir(path);
+	if (dir == NULL) {
+		perror("opendir failed");
+		exit(-1);
+		return NULL;
+	}
+	return dir;
+}
 
 void s_chdir(char *path)
 {
