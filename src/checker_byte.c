@@ -53,20 +53,22 @@ int main(int argc, char **argv)
 		dup2(fd[0], 0);
 		close(fd[0]);
 		char ch, ans_ch;
-		while (!kill(pid, 0)) {
-			ch = getchar();
-			if (read(answer, &ans_ch, 1) != 0) {
-				if (ch != ans_ch) {
+		int status;
+		while (waitpid(pid, &status, WNOHANG) == 0) {
+			while ((ch = getchar()) != -1) {
+				if (read(answer, &ans_ch, 1) == 1) {
+					if (ch != ans_ch) {
+						printf("-");
+						kill(pid, SIGKILL);
+						close(0);
+						return 0;
+					}
+				} else {
 					printf("-");
 					kill(pid, SIGKILL);
 					close(0);
 					return 0;
 				}
-			} else {
-				printf("-");
-				kill(pid, SIGKILL);
-				close(0);
-				return 0;
 			}
 		}
 		char ending[3] = {0, 0, 0};
@@ -83,7 +85,6 @@ int main(int argc, char **argv)
 		dup2(fd[1], 1);
 		close(fd[1]);
 		execlp(argv[1], argv[1], NULL);
-		exit(0);
 	}
 	return 0;
 }
