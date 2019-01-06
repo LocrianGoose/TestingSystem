@@ -283,6 +283,7 @@ void freeParticipants(Participant *prt)
 	for (int i = 0; prt[i].name != NULL; ++i) {
 		free(prt[i].solutions);
 		free(prt[i].points);
+		free(prt[i].name);
 	}
 	free(prt);
 }
