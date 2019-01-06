@@ -78,7 +78,9 @@ Participant *get_participants_list(char *contest)
 		snprintf(sol_d, 2 * NAME_MAX + 1, "%s/%s", path, entry->d_name);
 		sol_dir = opendir(sol_d);
 		if (sol_dir != NULL) {
-			participants[i].name = (tmp = entry->d_name);
+			tmp = entry->d_name;
+			participants[i].name = malloc(strlen(tmp) * sizeof(char));
+			strncpy(participants[i].name, tmp, strlen(tmp));
 			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
 				participants[i].points = 0;
 				get_solutions(sol_dir, participants + i);
