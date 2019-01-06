@@ -28,7 +28,7 @@ int s_close(int fd);
 int s_dup2(int oldfd, int newfd);
 
 int score_parameter = SUMM;
-char problems_string[NAME_MAX];
+char problems_string[NAME_MAX] = "";
 
 char **get_solutions(DIR *sol_dir, Participant *prt)
 {
@@ -78,7 +78,9 @@ Participant *get_participants_list(char *contest)
 		snprintf(sol_d, 2 * NAME_MAX + 1, "%s/%s", path, entry->d_name);
 		sol_dir = opendir(sol_d);
 		if (sol_dir != NULL) {
-			participants[i].name = (tmp = entry->d_name);
+			tmp = entry->d_name;
+			participants[i].name = malloc(strlen(tmp) * sizeof(char));
+			strncpy(participants[i].name, tmp, strlen(tmp));
 			if (strncmp(tmp, ".", 2) && strncmp(tmp, "..", 3)) {
 				participants[i].points = 0;
 				get_solutions(sol_dir, participants + i);
@@ -204,23 +206,30 @@ void init(int argc, char **argv)
 	}
 	s_dup2(config_fd, 0);
 	while (fgets(prop_string, NAME_MAX - 1, stdin) != NULL) {
+		for (int i = strlen(prop_string) - 1; i >= 0 && (prop_string[i] == ' ' || prop_string[i] == '\n'); --i)
+			prop_string[i] = 0;
 		if (!strncmp(prop_string, "score_parameter =", 17)) {
 			if (strstr(prop_string, "SUMM") != NULL)
 				score_parameter = SUMM;
 			if (strstr(prop_string, "PERF") != NULL)
 				score_parameter = PERF;
 		}
-		if (!strncmp(prop_string, "problems_list =", 15))
-			strncpy(problems_string, prop_string + 15, NAME_MAX);
+		if (!strncmp(prop_string, "problems_list =", 15)) {
+			int tmp = 15;
+			if (prop_string[16] == ' ')
+				tmp = 16;
+			for (tmp = 15; tmp < strlen(prop_string) && prop_string[tmp] == ' '; ++tmp)
+				;
+			strncpy(problems_string, prop_string + tmp, NAME_MAX);
+		}
 	}
-	problems_string[strlen(problems_string) - 1] = 0;
 	s_close(0);
 }
 
 char **get_problems(char *string)
 {
 	char **list = malloc(strlen(string) * sizeof(char **));
-	int start = 1, j = 0;
+	int start = 0, j = 0;
 	for (int i = 0; i <= strlen(string); ++i) {
 		if (string[i] == ',' || string[i] == 0) {
 			list[j] = malloc((i - start + 1) * sizeof(char));
@@ -252,7 +261,8 @@ int printResult(Participant *prt)
 		for (int j = 0; problems_list[j] != NULL; ++j) {
 			flag = 1;
 			for (int k = 0; prt[i].solutions[k] != 0; ++k) {
-				if (strncmp(problems_list[j], prt[i].solutions[k],
+				if (strlen(problems_list[j]) &&
+						strncmp(problems_list[j], prt[i].solutions[k],
 							strlen(problems_list[j])) == 0) {
 					printf(", %d", prt[i].points[k]);
 					flag = 0;
@@ -273,6 +283,7 @@ void freeParticipants(Participant *prt)
 	for (int i = 0; prt[i].name != NULL; ++i) {
 		free(prt[i].solutions);
 		free(prt[i].points);
+		free(prt[i].name);
 	}
 	free(prt);
 }
